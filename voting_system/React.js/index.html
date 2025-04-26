@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Citizen Voting System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/lucide-static@0.16.0/font/lucide.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar {
+            box-shadow: 0 2px 4px rgba(221, 206, 206, 0.1);
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .candidate-card {
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .candidate-card:hover {
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        }
+        .selected-candidate {
+            border: 2px solid #0d6efd;
+            background-color: #f8f9fa;
+        }
+        .vote-confirmed {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#"><em>E-Citizen Voting System</em></a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="setPage('home')">
+                            <i data-feather="home"></i> Home
+                        </a>
+                    </li>
+                    <li class="nav-item" id="dashboard-nav" style="display: none;">
+                        <a class="nav-link" href="#" onclick="setPage('dashboard')">
+                            <i data-feather="user"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="setPage('help')">
+                            <i data-feather="help-circle"></i> Help
+                        </a>
+                    </li>
+                    <li class="nav-item" id="logout-nav" style="display: none;">
+                        <a class="nav-link" href="#" onclick="handleLogout()">
+                            <i data-feather="log-out"></i> Logout
+                        </a>
+                    </li>
+                    <li class="nav-item" id="login-nav">
+                        <a class="nav-link" href="#" onclick="setPage('login')">
+                            <i data-feather="user"></i> Login
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4" id="page-content">
+        <!-- Content will be dynamically loaded here -->
+    </div>
+
+    <script>
+        // Mock data
+        const candidatesData = [
+            { id: 1, name: "RUTO ARAP WILLIAM", party: "United Democratic Alliance", position: "President", image: "https://via.placeholder.com/100", votes: 2345 },
+            { id: 2, name: "STEPHEN KALONZO MUSYOKA", party: "Wiper Party", position: "President", image: "https://via.placeholder.com/100", votes: 1987 },
+            { id: 3, name: "OKENG'O FRED MATIANG'I", party: "National Alliance", position: "President", image: "https://via.placeholder.com/100", votes: 2156 }
+        ];
+
+        const electionsData = [
+            { id: 1, title: "Presidential Election 2027", description: "National General Election for President", startDate: "2027-08-09", endDate: "2027-08-09", status: "upcoming" },
+            { id: 2, title: "Senate Elections", description: "Election for Senate positions", startDate: "2027-08-09", endDate: "2027-08-09", status: "upcoming" }
+        ];
+
+        // State management
+        let currentPage = 'home';
+        let loggedIn = false;
+        let showPassword = false;
+        let electionSelected = null;
+        let selectedCandidate = null;
+        let voteConfirmed = false;
+        let user = null;
+        let formValues = {
+            nationalId: '',
+            fullName: 'FRANCIS OGUTU ODHIAMBO',
+            password: '12345'
+        };
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+            renderPage(currentPage);
+        });
+
+        // Page navigation
+        function setPage(page) {
+            currentPage = page;
+            renderPage(page);
+        }
+
+        // Handle input changes
+        function handleInputChange(e) {
+            const { name, value } = e.target;
+            formValues = {
+                ...formValues,
+                [name]: value
+            };
+        }
+
+        // Handle login
+        function handleLogin(e) {
+            e.preventDefault();
+            // Simulate login
+            user = {
+                id: '12345678',
+                fullName: 'FRANCIS OGUTU ODHIAMBO',
+                middleName: 'ODHIAMBO',
+                password: '12345',
+                
+            };
+            loggedIn = true;
+            updateNavbar();
+            setPage('dashboard');
+        }
+
+        // Handle logout
+        function handleLogout() {
+            loggedIn = false;
+            user = null;
+            updateNavbar();
+            setPage('home');
+        }
+
+        // Update navbar based on login state
+        function updateNavbar() {
+            document.getElementById('dashboard-nav').style.display = loggedIn ? 'block' : 'none';
+            document.getElementById('logout-nav').style.display = loggedIn ? 'block' : 'none';
+            document.getElementById('login-nav').style.display = loggedIn ? 'none' : 'block';
+        }
+
+        // Handle election selection
+        function handleElectionSelect(election) {
+            electionSelected = election;
+            setPage('voting');
+        }
+
+        // Handle candidate selection
+        function handleCandidateSelect(candidate) {
+            selectedCandidate = candidate;
+            renderPage('voting'); // Re-render to show selection
+        }
+
+        // Handle vote confirmation
+        function handleVoteConfirm() {
+            voteConfirmed = true;
+            renderPage('voting');
+            
+            // Redirect to results after delay
+            setTimeout(() => {
+                setPage('results');
+                voteConfirmed = false;
+            }, 2000);
+        }
+
+        // Render pages
+        function renderPage(page) {
+            const contentDiv = document.getElementById('page-content');
+            
+            switch(page) {
+                case 'home':
+                    contentDiv.innerHTML = renderHomePage();
+                    break;
+                case 'login':
+                    contentDiv.innerHTML = renderLoginPage();
+                    break;
+                case 'dashboard':
+                    contentDiv.innerHTML = renderDashboardPage();
+                    break;
+                case 'voting':
+                    contentDiv.innerHTML = renderVotingPage();
+                    break;
+                case 'results':
+                    contentDiv.innerHTML = renderResultsPage();
+                    break;
+                case 'help':
+                    contentDiv.innerHTML = renderHelpPage();
+                    break;
+                default:
+                    contentDiv.innerHTML = renderHomePage();
+            }
+            
+            feather.replace();
+        }
+
+        // Page rendering functions
+        function renderHomePage() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h2 class="text-primary">Welcome to the E-Voting System</h2>
+                        <p class="lead">Secure, Transparent, and Accessible Voting for All Citizens</p>
+                        ${!loggedIn ? `<button class="btn btn-primary btn-lg" onclick="setPage('login')">Login / Register to Vote</button>` : ''}
+                    </div>
+                    <div class="card-body">
+                        <h3 class="mb-4">Important Announcements</h3>
+                        
+                        <div class="alert alert-warning d-flex align-items-center">
+                            <i data-feather="alert-circle" class="me-2"></i>
+                            <div>
+                                <h5 class="alert-heading">General Election 2027</h5>
+                                <p>The Kenyan General Election will be held on August, 09 2027. All registered voters are encouraged to participate.</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h4 class="card-title">How It Works</h4>
+                                        <ol class="ps-3">
+                                            <li>Register or login with your National ID</li>
+                                            <li>Verify your identity using the secure method</li>
+                                            <li>Access available elections on your dashboard</li>
+                                            <li>Cast your vote securely and privately</li>
+                                            <li>Receive confirmation of your vote submission</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h4 class="card-title">System Features</h4>
+                                        <ul class="ps-3">
+                                            <li>Secure authentication and identity verification</li>
+                                            <li>Encrypted ballot submission</li>
+                                            <li>Immediate vote confirmation</li>
+                                            <li>Real-time election results (when available)</li>
+                                            <li>24/7 technical support</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderLoginPage() {
+            return `
+            
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="text-center mb-0">Voter Authentication</h2>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs mb-4" id="authTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#login-tab-pane" type="button" role="tab">
+                                    <i data-feather="log-in" class="me-1"></i> Login
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="register-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#register-tab-pane" type="button" role="tab">
+                                    <i data-feather="user-plus" class="me-1"></i> Register
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="authTabsContent">
+                            <!-- Login Tab -->
+                            <div class="tab-pane fade show active" id="login-tab-pane" role="tabpanel">
+                                <form onsubmit="handleLogin(event)">
+                                    <div class="mb-3">
+                                        <label for="nationalId" class="form-label">National ID Number</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control" id="nationalId" name="nationalId" 
+                                                value="${formValues.nationalId}" onchange="handleInputChange(event)" 
+                                                placeholder="Enter your National ID" required>
+                                            <span class="input-group-text"><i data-feather="user"></i></span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <div class="input-group">
+                                            <input type="${showPassword ? 'text' : 'password'}" class="form-control" id="password" name="password" 
+                                                value="${formValues.password}" onchange="handleInputChange(event)" 
+                                                placeholder="Enter your password" required>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="showPassword=!showPassword; renderPage('login')">
+                                                <i data-feather="${showPassword ? 'eye-off' : 'eye'}"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3 d-flex justify-content-between align-items-center">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="remember">
+                                            <label class="form-check-label" for="remember">Remember me</label>
+                                        </div>
+                                        <a href="#" class="text-decoration-none">Forgot password?</a>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary w-100 mb-3">
+                                        <i data-feather="log-in" class="me-1"></i> Login
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <!-- Register Tab -->
+                            <div class="tab-pane fade" id="register-tab-pane" role="tabpanel">
+                                <form onsubmit="handleRegister(event)">
+                                    <div class="mb-3">
+                                        <label for="regNationalId" class="form-label">National ID Number</label>
+                                        <input type="text" class="form-control" id="regNationalId" name="nationalId" 
+                                            placeholder="Enter your National ID" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="fullName" class="form-label">Full Name (as per ID)</label>
+                                        <input type="text" class="form-control" id="fullName" name="fullName" 
+                                            placeholder="Enter your full name" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email Address</label>
+                                        <input type="email" class="form-control" id="email" name="email" 
+                                            placeholder="Enter your email" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="phone" class="form-label">Phone Number</label>
+                                        <input type="tel" class="form-control" id="phone" name="phone" 
+                                            placeholder="Enter your phone number" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="regPassword" class="form-label">Create Password</label>
+                                        <input type="password" class="form-control" id="regPassword" name="password" 
+                                            placeholder="Create a password" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                                        <input type="password" class="form-control" id="confirmPassword" 
+                                            placeholder="Confirm your password" required>
+                                    </div>
+                                    
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" class="form-check-input" id="terms" required>
+                                        <label class="form-check-label" for="terms">
+                                            I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                                        </label>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i data-feather="user-plus" class="me-1"></i> Register
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <strong>Identity Verification:</strong> After registration, you will receive an OTP on your registered phone number for verification.
+                            <p class="mb-0 mt-1">For first-time users, additional biometric verification may be required at your nearest verification center.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Add this new function to handle registration
+async function handleRegister(e) {
+    e.preventDefault();
+    try {
+        const response = await fetch('/api/v1/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                national_id: document.getElementById('regNationalId').value,
+                full_name: document.getElementById('fullName').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                password: document.getElementById('regPassword').value
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Registration successful! Please verify your email/phone to activate your account.');
+            // Switch to login tab after successful registration
+            document.getElementById('login-tab').click();
+        } else {
+            alert(data.message || 'Registration failed. Please try again.');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        alert('Registration failed. Please try again.');
+    }
+}
+
+        function renderDashboardPage() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h2 class="text-primary">Welcome, ${user?.middleName || 'Voter'}!</h2>
+                        <p class="mb-0">Here's your personalized voting dashboard. You can access all active and upcoming elections below.</p>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="mb-4">Available Elections</h3>
+                        
+                        ${electionsData.length > 0 ? `
+                            <div class="row">
+                                ${electionsData.map(election => `
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card h-100">
+                                            <div class="card-header bg-light">
+                                                <h4 class="card-title mb-1">${election.title}</h4>
+                                                <small class="text-muted">
+                                                    ${new Date(election.startDate).toLocaleDateString()} - ${new Date(election.endDate).toLocaleDateString()}
+                                                </small>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="card-text">${election.description}</p>
+                                            </div>
+                                            <div class="card-footer d-flex justify-content-between align-items-center">
+                                                <span class="badge ${election.status === 'active' ? 'bg-success' : 'bg-primary'}">
+                                                    ${election.status.charAt(0).toUpperCase() + election.status.slice(1)}
+                                                </span>
+                                                <button class="btn btn-sm btn-outline-primary" onclick="handleElectionSelect(${JSON.stringify(election).replace(/"/g, '&quot;')})">
+                                                    Enter Election <i data-feather="chevron-right" class="ms-1"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div class="alert alert-info">
+                                There are no available elections at the moment. Please check back later.
+                            </div>
+                        `}
+                        
+                        <div class="card mt-4 bg-light">
+                            <div class="card-body">
+                                <h3 class="card-title">Your Voting Activity</h3>
+                                <p class="card-text">You haven't participated in any elections yet. When you vote, your activity will be displayed here.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderVotingPage() {
+            if (voteConfirmed) {
+                return `
+                    <div class="row justify-content-center">
+                        <div class="col-md-8 text-center">
+                            <div class="card border-success vote-confirmed">
+                                <div class="card-body">
+                                    <h2 class="text-success mb-3">Vote Successful!</h2>
+                                    <p class="lead">Your vote has been securely recorded. Thank you for participating in the democratic process!</p>
+                                    <p class="text-muted">You will be redirected to the results page shortly...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <button class="btn btn-outline-primary btn-sm mb-2" onclick="setPage('dashboard')">
+                            <i data-feather="chevron-left" class="me-1"></i> Back to Dashboard
+                        </button>
+                        <h2 class="text-primary">${electionSelected?.title || 'Election'}</h2>
+                        <p class="mb-1">${electionSelected?.description}</p>
+                        <small class="text-muted">
+                            Election Date: ${electionSelected?.startDate ? new Date(electionSelected.startDate).toLocaleDateString() : 'N/A'}
+                        </small>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="mb-4">Select Your Candidate</h3>
+                        
+                        <div class="row">
+                            ${candidatesData.map(candidate => `
+                                <div class="col-md-6 col-lg-4 mb-4">
+                                    <div class="card candidate-card h-100 ${selectedCandidate?.id === candidate.id ? 'selected-candidate' : ''}" 
+                                        onclick="handleCandidateSelect(${JSON.stringify(candidate).replace(/"/g, '&quot;')})">
+                                        <div class="card-body d-flex">
+                                            <img src="${candidate.image}" alt="${candidate.name}" class="rounded-circle me-3" width="80" height="80">
+                                            <div>
+                                                <h5 class="card-title mb-1">${candidate.name}</h5>
+                                                <p class="text-muted mb-1">${candidate.party}</p>
+                                                <small class="text-muted">Candidate for ${candidate.position}</small>
+                                                
+                                                <div class="form-check mt-3">
+                                                    <input class="form-check-input" type="radio" name="candidateSelection" 
+                                                        id="candidate-${candidate.id}" ${selectedCandidate?.id === candidate.id ? 'checked' : ''}>
+                                                    <label class="form-check-label" for="candidate-${candidate.id}">
+                                                        Select this candidate
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <button class="btn btn-primary btn-lg" 
+                                onclick="handleVoteConfirm()" 
+                                ${!selectedCandidate ? 'disabled' : ''}>
+                                Confirm Vote
+                            </button>
+                        </div>
+                        
+                        <div class="alert alert-warning mt-4">
+                            <strong>Note:</strong> Once you confirm your vote, it cannot be changed. Please review your selection carefully before confirming.
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderResultsPage() {
+            const sortedCandidates = [...candidatesData].sort((a, b) => b.votes - a.votes);
+            const totalVotes = sortedCandidates.reduce((sum, candidate) => sum + candidate.votes, 0);
+            
+            const chartData = sortedCandidates.map(candidate => ({
+                name: candidate.name,
+                votes: candidate.votes,
+                percentage: ((candidate.votes / totalVotes) * 100).toFixed(1)
+            }));
+
+            // Render chart after DOM is loaded
+            setTimeout(() => {
+                const ctx = document.getElementById('resultsChart');
+                if (ctx) {
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: chartData.map(item => item.name),
+                            datasets: [{
+                                label: 'Votes',
+                                data: chartData.map(item => item.votes),
+                                backgroundColor: '#0d6efd',
+                                borderColor: '#0d6efd',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                }
+            }, 100);
+
+            return `
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <button class="btn btn-outline-primary btn-sm mb-2" onclick="setPage('dashboard')">
+                            <i data-feather="chevron-left" class="me-1"></i> Back to Dashboard
+                        </button>
+                        <h2 class="text-primary">Election Results</h2>
+                        <p class="mb-0">${electionSelected?.title || 'Current Election'}</p>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="mb-4">Results Visualization</h3>
+                        
+                        <div class="mb-5" style="height: 400px;">
+                            <canvas id="resultsChart"></canvas>
+                        </div>
+                        
+                        <h3 class="mb-3">Detailed Results</h3>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Candidate</th>
+                                        <th>Party</th>
+                                        <th>Votes</th>
+                                        <th>Percentage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${chartData.map((candidate, index) => `
+                                        <tr ${index === 0 ? 'class="table-primary"' : ''}>
+                                            <td>${index + 1}</td>
+                                            <td>${candidate.name}</td>
+                                            <td>${sortedCandidates[index].party}</td>
+                                            <td>${candidate.votes.toLocaleString()}</td>
+                                            <td>${candidate.percentage}%</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="text-end mt-3">
+                            <small class="text-muted">Total Votes Cast: ${totalVotes.toLocaleString()}</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHelpPage() {
+            return `
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h2 class="text-primary">Help & Support</h2>
+                        <p class="mb-0">Find answers to common questions and get assistance with the E-Voting System.</p>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="mb-4">Frequently Asked Questions</h3>
+                        
+                        <div class="accordion mb-5" id="faqAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingOne">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                        How do I register to vote?
+                                    </button>
+                                </h2>
+                                <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        To register, you need to provide your National ID number, full name as it appears on your ID, and create a password. 
+                                        After initial registration, you'll need to complete identity verification through OTP or biometric verification.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingTwo">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                        What if I forget my password?
+                                    </button>
+                                </h2>
+                                <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Click on the "Forgot password?" link on the login page. You'll need to verify your identity using your National ID 
+                                        and the registered phone number or email to reset your password.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingThree">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                        How secure is the E-Voting System?
+                                    </button>
+                                </h2>
+                                <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        The system uses multiple layers of security including encryption, two-factor authentication, and blockchain technology 
+                                        to ensure vote integrity. Your vote is anonymous and cannot be traced back to you once cast.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingFour">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour">
+                                        Can I change my vote after submitting it?
+                                    </button>
+                                </h2>
+                                <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        No, once you confirm your vote, it cannot be changed. This is why we provide a confirmation step before finalizing your selection.
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="headingFive">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive">
+                                        What if I encounter technical issues during voting?
+                                    </button>
+                                </h2>
+                                <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#faqAccordion">
+                                    <div class="accordion-body">
+                                        Contact our technical support team immediately using the contact information provided below. 
+                                        We have support staff available 24/7 during election periods.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <h3 class="card-title">Contact Support</h3>
+                                        
+                                        <div class="d-flex mb-3">
+                                            <i data-feather="phone" class="text-primary me-3"></i>
+                                            <div>
+                                                <h5 class="mb-1">Phone Support</h5>
+                                                <p class="mb-1">Toll-Free: 1-800-VOTE-HELP</p>
+                                                <small class="text-muted">Available 24/7 during election periods</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex">
+                                            <i data-feather="mail" class="text-primary me-3"></i>
+                                            <div>
+                                                <h5 class="mb-1">Email Support</h5>
+                                                <p class="mb-1">support@evotingsystem.gov</p>
+                                                <small class="text-muted">Response within 24 hours</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        // Update handleLogin function
+async function handleLogin(e) {
+    e.preventDefault();
+    try {
+        const response = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                national_id: formValues.nationalId,
+                password: formValues.password
+            }),
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            user = data.user;
+            loggedIn = true;
+            updateNavbar();
+            setPage('dashboard');
+            loadElections();
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        alert('Login failed. Please try again.');
+    }
+}
+
+// Add this function to load elections
+async function loadElections() {
+    try {
+        const response = await fetch('/api/v1/elections', {
+            credentials: 'include'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            electionsData = data.elections;
+            renderPage(currentPage);
+        }
+    } catch (error) {
+        console.error('Error loading elections:', error);
+    }
+}
+
+// Update handleVoteConfirm function
+async function handleVoteConfirm() {
+    if (!selectedCandidate || !electionSelected) return;
+    
+    try {
+        const response = await fetch('/api/v1/vote/cast', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                electionId: electionSelected.id,
+                candidateId: selectedCandidate.id
+            }),
+            credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            voteConfirmed = true;
+            renderPage('voting');
+            
+            setTimeout(() => {
+                setPage('results');
+                voteConfirmed = false;
+            }, 2000);
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        console.error('Voting error:', error);
+        alert('Failed to cast vote. Please try again.');
+    }
+}
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</body>
+</html>
